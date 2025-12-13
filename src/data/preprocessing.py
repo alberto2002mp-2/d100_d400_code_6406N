@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import pandas as pd
 
-from load_data import load_stocks_dataframe
-
 
 def get_data_description(df: pd.DataFrame) -> dict:
     """
@@ -20,8 +18,3 @@ def get_data_description(df: pd.DataFrame) -> dict:
     return {"dtypes": df.dtypes, "description": df.describe(include="all")}
 
 
-if __name__ == "__main__":
-    df = load_stocks_dataframe()
-    print(df)
-    df.info()
-    df.describe()

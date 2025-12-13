@@ -7,10 +7,17 @@ other scripts.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 from ucimlrepo import fetch_ucirepo
 
-__all__ = ["load_stocks_dataframe", "load_stock_dataframe"]
+__all__ = [
+    "load_stocks_dataframe",
+    "load_stock_dataframe",
+    "load_local_productivity_dataframe",
+    "load_dataframe_with_fallback",
+]
 
 
 def load_stocks_dataframe() -> pd.DataFrame:
@@ -42,6 +49,25 @@ def load_stock_dataframe() -> pd.DataFrame:
     return load_stocks_dataframe()
 
 
+def load_local_productivity_dataframe() -> pd.DataFrame:
+    """Read the bundled garments worker productivity CSV relative to the repo root."""
+
+    csv_path = Path(__file__).resolve().parents[2] / "garments_worker_productivity.csv"
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Could not find bundled CSV at {csv_path}")
+
+    return pd.read_csv(csv_path)
+
+
+def load_dataframe() -> pd.DataFrame:
+    """Load the stock dataset, falling back to the local CSV if fetching fails."""
+
+    try:
+        return load_stocks_dataframe()
+    except Exception:
+        return load_local_productivity_dataframe()
+
+
 if __name__ == "__main__":
-    df = load_stocks_dataframe()
+    df = load_dataframe()
     print(df.head())
