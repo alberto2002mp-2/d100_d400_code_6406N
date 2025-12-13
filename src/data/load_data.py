@@ -12,8 +12,9 @@ from ucimlrepo import fetch_ucirepo
 
 stocks = fetch_ucirepo(id=597)
 
-print(stocks.metadata)
+
 print(stocks.variables)
+
 def load_stocks_dataframe() -> pd.DataFrame:
     """Return the UCI stock dataset (id=597) as a ``pandas.DataFrame``.
 
