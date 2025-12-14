@@ -16,7 +16,7 @@ __all__ = [
     "load_stocks_dataframe",
     "load_stock_dataframe",
     "load_local_productivity_dataframe",
-    "load_dataframe_with_fallback",
+    "load_dataframe",
 ]
 
 

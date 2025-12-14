@@ -1,20 +1,7 @@
-from __future__ import annotations
-
+import numpy as np
 import pandas as pd
 
+from data.load_data import load_dataframe
 
-def get_data_description(df: pd.DataFrame) -> dict:
-    """
-    Generates a description of the data and plots distributions.
-
-    Parameters:
-        df: The DataFrame to analyze.
-
-    Returns:
-        A dictionary containing data types and a dataframe of descriptive statistics.
-    """
-    # plotting.plot_distributions(df)
-
-    return {"dtypes": df.dtypes, "description": df.describe(include="all")}
-
-
+df = load_dataframe()
+df.info()  
