@@ -75,9 +75,6 @@ def load_df_clean(parquet_path: str | Path = DEFAULT_PARQUET_PATH) -> pd.DataFra
         raise ValueError("Loaded object is not a pandas DataFrame.")
     return df
 
-df = load_df_clean()
-print(df)
-
 def _get_numeric_features(df: pd.DataFrame, target: str) -> list[str]:
     """Return numeric feature names excluding the target column."""
     if target not in df.columns:
@@ -318,3 +315,6 @@ def main() -> None:
         logger.exception("Training failed: %s", exc)
         raise
 
+
+if __name__ == "__main__":
+    main()

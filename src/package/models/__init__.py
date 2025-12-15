@@ -1,6 +1,6 @@
 """Model training package for regression tasks."""
 
-from .train import (
+from .model_training import (
     create_numeric_preprocessor,
     evaluate_regression,
     load_df_clean,
