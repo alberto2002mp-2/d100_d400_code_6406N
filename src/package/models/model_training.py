@@ -243,7 +243,19 @@ def run_training(
     # LightGBM model without scaling.
     lgbm_preprocessor = create_numeric_preprocessor(scale=False)
     lgbm_pipeline = Pipeline(
-        steps=[("preprocess", lgbm_preprocessor), ("model", LGBMRegressor(random_state=seed))]
+        steps=[
+            (
+                "preprocess",
+                lgbm_preprocessor,
+            ),
+            (
+                "model",
+                LGBMRegressor(
+                    objective="regression",
+                    random_state=seed,
+                ),
+            ),
+        ]
     )
     lgbm_param_dist = {
         "model__n_estimators": randint(200, 1500),
