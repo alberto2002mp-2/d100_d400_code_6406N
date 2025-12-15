@@ -18,12 +18,12 @@ from typing import Any, Dict, Iterable, Tuple
 import joblib
 import numpy as np
 import pandas as pd
-from lightgbm import LGBMRegressor
+from lightgbm import LGBMRegressor, early_stopping
 from scipy.stats import loguniform, randint, uniform
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer, make_column_selector
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import ElasticNet
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import KFold, RandomizedSearchCV, train_test_split
 from sklearn.pipeline import Pipeline
@@ -154,11 +154,12 @@ def _run_baseline_and_tune(
     y_test: pd.Series,
     n_iter: int,
     seed: int,
+    fit_params: dict[str, Any] | None = None,
 ) -> Tuple[Pipeline, Dict[str, Dict[str, float]]]:
     """Fit baseline, tune with RandomizedSearchCV, and report metrics."""
     logger.info("Training baseline %s model", model_name)
     baseline_model = clone(base_pipeline)
-    baseline_model.fit(X_train, y_train)
+    baseline_model.fit(X_train, y_train, **(fit_params or {}))
     baseline_pred = baseline_model.predict(X_test)
     baseline_metrics = evaluate_regression(y_test, baseline_pred)
 
@@ -174,7 +175,7 @@ def _run_baseline_and_tune(
         n_jobs=-1,
         verbose=0,
     )
-    search.fit(X_train, y_train)
+    search.fit(X_train, y_train, **(fit_params or {}))
     tuned_model = search.best_estimator_
     tuned_pred = tuned_model.predict(X_test)
     tuned_metrics = evaluate_regression(y_test, tuned_pred)
@@ -193,6 +194,7 @@ def train_and_tune(
     y_test: pd.Series,
     n_iter: int = 20,
     seed: int = DEFAULT_SEED,
+    fit_params: dict[str, Any] | None = None,
 ) -> Tuple[Pipeline, Dict[str, Dict[str, float]]]:
     """Wrapper to train baseline and tuned versions of a regression pipeline."""
     return _run_baseline_and_tune(
@@ -205,6 +207,7 @@ def train_and_tune(
         y_test=y_test,
         n_iter=n_iter,
         seed=seed,
+        fit_params=fit_params,
     )
 
 
@@ -223,13 +226,21 @@ def run_training(
         df, target=TARGET_COLUMN, test_size=0.2, seed=seed
     )
 
-    # GLM-style Ridge model with scaling.
+    # GLM-style ElasticNet model with scaling.
     glm_preprocessor = create_numeric_preprocessor(scale=True)
-    glm_pipeline = Pipeline(steps=[("preprocess", glm_preprocessor), ("model", Ridge())])
-    glm_param_dist = {"model__alpha": loguniform(1e-4, 100)}
+    glm_pipeline = Pipeline(
+        steps=[
+            ("preprocess", glm_preprocessor),
+            ("model", ElasticNet(max_iter=10000, random_state=seed)),
+        ]
+    )
+    glm_param_dist = {
+        "model__alpha": loguniform(1e-4, 100),
+        "model__l1_ratio": uniform(0, 1),
+    }
 
     tuned_glm, glm_metrics = train_and_tune(
-        model_name="ridge",
+        model_name="elasticnet",
         pipeline=glm_pipeline,
         param_dist=glm_param_dist,
         X_train=X_train,
@@ -258,12 +269,20 @@ def run_training(
         ]
     )
     lgbm_param_dist = {
-        "model__n_estimators": randint(200, 1500),
+        # Use a higher ceiling for n_estimators; early stopping will truncate.
+        "model__n_estimators": randint(800, 2000),
         "model__learning_rate": loguniform(0.01, 0.2),
         "model__num_leaves": randint(10, 80),
         "model__min_child_samples": randint(5, 80),
+        "model__min_child_weight": loguniform(1e-3, 10),
         "model__subsample": uniform(0.6, 0.4),
         "model__colsample_bytree": uniform(0.6, 0.4),
+    }
+
+    lgbm_fit_params = {
+        "model__eval_set": [(X_test, y_test)],
+        "model__eval_metric": "rmse",
+        "model__callbacks": [early_stopping(stopping_rounds=50, verbose=False)],
     }
 
     tuned_lgbm, lgbm_metrics = train_and_tune(
@@ -276,6 +295,7 @@ def run_training(
         y_test=y_test,
         n_iter=20,
         seed=seed,
+        fit_params=lgbm_fit_params,
     )
 
     joblib.dump(tuned_glm, output_path / "glm_model.joblib")
