@@ -64,3 +64,5 @@ def test_quantile_clipper_transformations(X, lower_q, upper_q, expected):
     np.testing.assert_allclose(X, X_original)
     # Values are clipped as expected.
     np.testing.assert_allclose(transformed, expected)
+
+test_quantile_clipper_transformations()
